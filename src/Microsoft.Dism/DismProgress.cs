@@ -12,7 +12,7 @@ namespace Microsoft.Dism
     /// Represents progress made during time-consuming operations.
     /// </summary>
     /// <remarks>This class also acts as a wrapper to the native callback method and stores the user data given back to the original caller.</remarks>
-    public sealed class DismProgress : IDisposable
+    public sealed class DismProgress : DismProgressBase, IDisposable
     {
         /// <summary>
         /// The users callback method.
@@ -30,12 +30,10 @@ namespace Microsoft.Dism
         /// <param name="callback">A DismProgressCallback to call when progress is made.</param>
         /// <param name="userData">A custom object to pass to the callback.</param>
         internal DismProgress(DismProgressCallback callback, object userData)
+            : base(userData)
         {
             // Save the managed callback method
             _callback = callback;
-
-            // Save the user data
-            UserData = userData;
 
             // Create an EventWaitHandle so the operation can be canceled
             _eventHandle = new EventWaitHandle(false, EventResetMode.ManualReset);
@@ -50,34 +48,6 @@ namespace Microsoft.Dism
             set;
         }
 
-        /// <summary>
-        /// Gets the current progress value.
-        /// </summary>
-        public int Current
-        {
-            get;
-            private set;
-        }
-
-        /// <summary>
-        /// Gets the total progress value.
-        /// </summary>
-        public int Total
-        {
-            get;
-            private set;
-        }
-
-        /// <summary>
-        /// Gets the user defined object for the callback.
-        /// </summary>
-        public object UserData
-        {
-            get;
-            private set;
-        }
-
-        /// <summary>
         /// Gets a SafeWaitHandle object used for canceling the operation.
         /// </summary>
         internal SafeWaitHandle EventHandle => _eventHandle.SafeWaitHandle;
@@ -97,13 +67,9 @@ namespace Microsoft.Dism
         /// <param name="current">The current progress value.</param>
         /// <param name="total">The total progress.</param>
         /// <param name="userData">Any user data associated with the callback.</param>
-        internal void DismProgressCallbackNative(UInt32 current, UInt32 total, IntPtr userData)
+        internal override void DismProgressCallbackNative(UInt32 current, UInt32 total, IntPtr userData) : base(current,total,userData)
         {
-            // Save the current progress
-            Current = (int)current;
-
-            // Save the total progress
-            Total = (int)total;
+            base.DismProgressCallbackNative(current, total, userData);
 
             // Call the managed callback and pass this object so the user
             _callback?.Invoke(this);
